@@ -8,8 +8,6 @@ import android.graphics.Paint
 import android.util.AttributeSet
 import android.view.View
 import java.util.*
-import kotlin.math.cos
-import kotlin.math.sin
 
 @SuppressLint("Recycle")
 class ClockView @JvmOverloads constructor(
@@ -26,7 +24,7 @@ class ClockView @JvmOverloads constructor(
     private val lineZonePaint: Paint
 
     companion object {
-        const val UPDATE = 500L
+        const val UPDATE = 1000L
         const val CIRCLE_WIDTH = 25f
         const val LINE_WIDTH = 15f
         const val SECOND_WIDTH_DEF = 5f
@@ -35,11 +33,8 @@ class ClockView @JvmOverloads constructor(
         const val CENTER_RADIUS = 20f
         const val LINE_ROTATE = 30f
         const val PADDING = 50
-        const val AMOUNT_HOUR = 12
         const val HALF = 2
         const val QUARTER = 4
-        const val COMPLETE_DIAL_CYCLE = 60.0
-        const val INTERMEDIATE_HOUR = 5f
         const val ANGLE_MIN_OF_PI = 30
     }
 
@@ -60,6 +55,9 @@ class ClockView @JvmOverloads constructor(
     private var secondHandSize = 0
     private var minuteHandSize = 0
     private var hourHandSize = 0
+    private var secondLineLength = 0.0f
+    private var minuteLineLength = 0.0f
+    private var hourLineLength = 0.0f
 
     init {
 
@@ -119,11 +117,14 @@ class ClockView @JvmOverloads constructor(
         hourHandTruncation = radius - radius / HALF
         handTruncation = radius - radius / QUARTER
         isInit = true
+
+        hourLineLength = radius * 0.5f
+        minuteLineLength = radius * 0.6f
+        secondLineLength = radius * 0.7f
     }
 
     override fun onDraw(canvas: Canvas?) {
         super.onDraw(canvas)
-
         if (!isInit) {
             initClock()
         }
@@ -145,47 +146,50 @@ class ClockView @JvmOverloads constructor(
 
     private fun drawHands(canvas: Canvas?) {
         val calendar = Calendar.getInstance()
-        val mHour = calendar.get(Calendar.HOUR_OF_DAY)
-        if (mHour > AMOUNT_HOUR) mHour - AMOUNT_HOUR else mHour
-        val mMinute = calendar.get(Calendar.MINUTE)
-        val mSecond = calendar.get(Calendar.SECOND)
+        calendar.timeInMillis = System.currentTimeMillis()
+        val mSecond = calendar.get(Calendar.SECOND) * 6f
+        val mMinute = calendar.get(Calendar.MINUTE) * 6f + mSecond / 60f
+        val mHour = calendar.get(Calendar.HOUR) * 30f + mMinute / 12f
 
-        drawHourLine(canvas, (mHour + mMinute / COMPLETE_DIAL_CYCLE) * INTERMEDIATE_HOUR)
-        drawMinuteLine(canvas, mMinute.toDouble())
-        drawSecondLine(canvas, mSecond.toDouble())
+        drawHourLine(canvas, mHour)
+        drawMinuteLine(canvas, mMinute)
+        drawSecondLine(canvas, mSecond)
     }
 
-    private fun drawSecondLine(canvas: Canvas?, double: Double) {
-        createAngle(double)
+    private fun drawSecondLine(canvas: Canvas?, float: Float) {
+        canvas?.save()
+        canvas?.rotate(float, myCenterX.toFloat(), myCenterY.toFloat())
         canvas?.drawLine(
                 myCenterX.toFloat(),
                 myCenterY.toFloat(),
-                (myCenterX + cos(mAngle) * handTruncation).toFloat(),
-                (myCenterY + sin(mAngle) * handTruncation).toFloat(),
-                secondLinePaint
-        )
+                myCenterX.toFloat(),
+                (myCenterY - secondLineLength),
+                secondLinePaint)
+        canvas?.restore()
     }
 
-    private fun drawMinuteLine(canvas: Canvas?, double: Double) {
-        createAngle(double)
+    private fun drawMinuteLine(canvas: Canvas?, float: Float) {
+        canvas?.save()
+        canvas?.rotate(float, myCenterX.toFloat(), myCenterY.toFloat())
         canvas?.drawLine(
                 myCenterX.toFloat(),
                 myCenterY.toFloat(),
-                (myCenterX + cos(mAngle) * handTruncation).toFloat(),
-                (myCenterY + sin(mAngle) * handTruncation).toFloat(),
-                minuteLinePaint
-        )
+                myCenterX.toFloat(),
+                (myCenterY - minuteLineLength),
+                minuteLinePaint)
+        canvas?.restore()
     }
 
-    private fun drawHourLine(canvas: Canvas?, double: Double) {
-        createAngle(double)
+    private fun drawHourLine(canvas: Canvas?, float: Float) {
+        canvas?.save()
+        canvas?.rotate(float, myCenterX.toFloat(), myCenterY.toFloat())
         canvas?.drawLine(
                 myCenterX.toFloat(),
                 myCenterY.toFloat(),
-                (myCenterX + cos(mAngle) * hourHandTruncation).toFloat(),
-                (myCenterY + sin(mAngle) * hourHandTruncation).toFloat(),
-                hourLinePaint
-        )
+                myCenterX.toFloat(),
+                (myCenterY - hourLineLength),
+                hourLinePaint)
+        canvas?.restore()
     }
 
     private fun drawZoneLine(canvas: Canvas?) {
@@ -207,10 +211,6 @@ class ClockView @JvmOverloads constructor(
                 CENTER_RADIUS,
                 centerPaint
         )
-    }
-
-    private fun createAngle(double: Double) {
-        mAngle = Math.PI * double / ANGLE_MIN_OF_PI - Math.PI / HALF
     }
 
     fun setSecondHandColor(color: Int) {
